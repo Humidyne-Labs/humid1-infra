@@ -1,0 +1,404 @@
+services:
+  caddy:
+    build: ./caddy
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+      - "8883:8883"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./landing-page:/var/www/html:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - proxy-net
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 384M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  # --------------------------------------------------------------------------------------------------
+  #
+  # {"level":"info","ts":1788509570.4638965,"msg":"failed to sufficiently increase receive buffer size 
+  #       (was: 208 kiB, wanted: 7168 kiB, got: 416 kiB). 
+  #       See https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes for details."} 
+  #
+  # --- sysctl setup for larger quic buffer size ----
+  #
+  # sudo cat <<EOF > /etc/sysctl.d/99-quic-buffers.conf
+  # net.core.rmem_max=7500000
+  # net.core.wmem_max=7500000
+  # EOF
+  # 
+  # sudo sysctl --system
+  # ---------------------------------------------------
+  # sudo sysctl -w net.core.rmem_max=7500000
+  # sudo sysctl -w net.core.wmem_max=7500000
+  # ---------------------------------------------------
+          
+  # ==========================================
+  # Captcha Service
+  # ==========================================
+  cap:
+    image: ghcr.io/humiditron/custom-cap:latest
+    container_name: cap
+    environment:
+      ADMIN_KEY: ${CAP_ADMIN_KEY}
+      REDIS_URL: redis://valkey:6379
+      ENABLE_ASSETS_SERVER: "true"
+    depends_on:
+      valkey:
+        condition: service_healthy
+    networks:
+      - proxy-net
+    restart: unless-stopped
+
+  valkey:
+    image: valkey/valkey:9-alpine
+    container_name: cap-valkey
+    volumes:
+      - valkey-data:/data
+    command: valkey-server --save 60 1 --loglevel warning --maxmemory-policy noeviction
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - proxy-net
+    restart: unless-stopped
+
+  # ==========================================
+  # Core Storage
+  # ==========================================
+  postgres:
+    image: "postgres:16-alpine"
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: thingsboard
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-authentik-db.sql:/docker-entrypoint-initdb.d/init-authentik-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d thingsboard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - proxy-net
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1536M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # ==========================================
+  # Authentik Identity Provider (2026.8)
+  # ==========================================
+  authentik-server:
+    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2026.8.0}
+    container_name: authentik-server
+    restart: unless-stopped
+    command: server
+    environment:
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+      AUTHENTIK_POSTGRESQL__HOST: postgres
+      AUTHENTIK_POSTGRESQL__USER: ${POSTGRES_USER:-postgres}
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+      # SMTP Relay
+      AUTHENTIK_EMAIL__HOST: ${SMTP_HOST}
+      AUTHENTIK_EMAIL__PORT: ${SMTP_PORT}
+      AUTHENTIK_EMAIL__USERNAME: ${SMTP_USER}
+      AUTHENTIK_EMAIL__PASSWORD: ${SMTP_PASSWORD}
+      AUTHENTIK_EMAIL__USE_TLS: "true"
+      AUTHENTIK_EMAIL__FROM: "HUMID1 Security <${SMTP_USER}>"
+    volumes:
+      - authentik-data:/data
+      - ./custom-templates:/templates
+    shm_size: 512mb
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - proxy-net
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1024M
+        reservations:
+          cpus: '0.25'
+          memory: 384M
+
+  authentik-worker:
+    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2026.8.0}
+    container_name: authentik-worker
+    restart: unless-stopped
+    command: worker
+    user: root
+    environment:
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+      AUTHENTIK_POSTGRESQL__HOST: postgres
+      AUTHENTIK_POSTGRESQL__USER: ${POSTGRES_USER:-postgres}
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+      # SMTP Relay
+      AUTHENTIK_EMAIL__HOST: ${SMTP_HOST}
+      AUTHENTIK_EMAIL__PORT: ${SMTP_PORT}
+      AUTHENTIK_EMAIL__USERNAME: ${SMTP_USER}
+      AUTHENTIK_EMAIL__PASSWORD: ${SMTP_PASSWORD}
+      AUTHENTIK_EMAIL__USE_TLS: "true"
+      AUTHENTIK_EMAIL__FROM: "HUMID1 Security <${SMTP_USER}>"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - authentik-data:/data
+      - ./custom-templates:/templates
+    shm_size: 512mb
+    depends_on:
+      postgres:
+        condition: service_healthy
+      authentik-server:
+        condition: service_started
+    networks:
+      - proxy-net
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+
+  # ==========================================
+  # ThingsBoard IoT Platform
+  # ==========================================
+  kafka:
+    image: bitnamilegacy/kafka:4.0
+    container_name: kafka
+    restart: unless-stopped
+    environment:
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_CFG_PROCESS_ROLES: "controller,broker"
+      KAFKA_CFG_NODE_ID: "0"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka:9093"
+      KAFKA_CFG_LOG_RETENTION_MS: "300000"
+      KAFKA_CFG_SEGMENT_BYTES: "26214400"
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx768m"
+    volumes:
+      - kafka-data:/bitnami
+    networks:
+      - proxy-net
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1024M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  thingsboard-ce:
+    image: "thingsboard/tb-node:4.3.1.4"    #Upgraded 8-27-2026
+    container_name: thingsboard-ce
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "5683-5688:5683-5688/udp"
+    environment:
+      TB_SERVICE_ID: tb-ce-node      
+      
+      # Enable CORS for the dashboard domain
+      HTTP_CORS_ENABLED: "true"
+      HTTP_CORS_ALLOWED_ORIGINS: "https://dash.humid1.com,http://localhost:3000,http://localhost:5000"
+      HTTP_CORS_ALLOWED_METHODS: "GET,POST,PUT,DELETE,OPTIONS"
+      HTTP_CORS_ALLOWED_HEADERS: "*"
+      HTTP_CORS_ALLOW_CREDENTIALS: "true"
+      
+      # Enforce 7-day timeseries retention
+      SQL_TTL_TIMESERIES_TTL: "604800"
+      
+      # JWT Token Expiration settings (align with Authentik SSO session)
+      SECURITY_JWT_TOKEN_EXPIRATION_TIME: "9000"
+      SECURITY_JWT_REFRESH_TOKEN_EXPIRATION_TIME: "604800"
+      SECURITY_CLAIM_ALLOW_CLAIMING_BY_DEFAULT: "true"
+        
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/thingsboard
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      
+      TB_QUEUE_TYPE: kafka
+      TB_KAFKA_SERVERS: kafka:9092
+      
+      # All traffic from 8883 gets forwarded to 1883 in Caddyfile
+      MQTT_SSL_ENABLED: "false" 
+      
+      SERVER_USE_FORWARD_HEADERS: "true"
+      SERVER_TOMCAT_INTERNAL_PROXY_PATTERNS: ".*"
+      
+      # Java run time constraints
+      JAVA_OPTS: "-Xms1024M -Xmx3072M -XX:+ExitOnOutOfMemoryError"
+      
+    networks:
+      - proxy-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: '3.0'
+          memory: 4096M
+        reservations:
+          cpus: '1.0'
+          memory: 1536M
+
+  # ==========================================
+  # Chatto Community Chat
+  # ==========================================
+  nats:
+    image: "nats:latest"
+    container_name: nats
+    restart: unless-stopped
+    volumes:
+      - ./nats.conf:/etc/nats/nats.conf:ro
+      - nats-data:/data
+    command: ["-c", "/etc/nats/nats.conf", "--auth=${NATS_TOKEN}"]
+    networks:
+      - proxy-net
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 128M
+
+  chatto:
+    #image: "ghcr.io/chattocorp/chatto:latest"
+    image: "ghcr.io/chattocorp/chatto:main-20260828t165217z-8f4e86c9d5d1" # Released 8-28-2026
+    container_name: chatto
+    restart: unless-stopped
+    environment:
+      CHATTO_WEBSERVER_URL: "${CHATTO_PUBLIC_URL:-https://chat.humid1.com}"
+      CHATTO_WEBSERVER_PORT: "4000"
+      CHATTO_WEBSERVER_COOKIE_ENCRYPTION_SECRET: "${CHATTO_COOKIE_ENCRYPTION_SECRET}"
+      CHATTO_WEBSERVER_COOKIE_SIGNING_SECRET: "${CHATTO_COOKIE_SIGNING_SECRET}"
+      CHATTO_CORE_SECRET_KEY: "${CHATTO_CORE_SECRET_KEY}"
+      CHATTO_CORE_ASSETS_SIGNING_SECRET: "${CHATTO_ASSETS_SIGNING_SECRET}"
+      CHATTO_NATS_EMBEDDED_ENABLED: "false"
+      CHATTO_NATS_CLIENT_URL: "nats://nats:4222"
+      CHATTO_NATS_CLIENT_AUTH_METHOD: "token"
+      CHATTO_NATS_CLIENT_TOKEN: "${NATS_TOKEN}"
+      CHATTO_SMTP_ENABLED: "true"
+      CHATTO_SMTP_HOST: "${SMTP_HOST}"
+      CHATTO_SMTP_PORT: "${SMTP_PORT}"
+      CHATTO_SMTP_TLS: "mandatory"
+      CHATTO_SMTP_USERNAME: "${SMTP_USER}"
+      CHATTO_SMTP_PASSWORD: "${SMTP_PASSWORD}"
+      CHATTO_SMTP_FROM: "${SMTP_USER}"
+      CHATTO_OWNERS_EMAILS: "${CHATTO_OWNERS_EMAILS}"
+      
+      CHATTO_AUTH_DIRECT_LOGIN: "false"
+      CHATTO_AUTH_DIRECT_REGISTRATION: "false"
+      
+      # Chatto OIDC via Authentik
+      CHATTO_AUTH_PROVIDERS_0_ID: "humid1-sso"
+      CHATTO_AUTH_PROVIDERS_0_TYPE: "oidc"
+      CHATTO_AUTH_PROVIDERS_0_LABEL: "Humid1 SSO"
+      CHATTO_AUTH_PROVIDERS_0_ISSUER_URL: "https://auth.humid1.com/application/o/chatto/"
+      CHATTO_AUTH_PROVIDERS_0_CLIENT_ID: "${CHATTO_OIDC_CLIENT_ID}"
+      CHATTO_AUTH_PROVIDERS_0_CLIENT_SECRET: "${CHATTO_OIDC_CLIENT_SECRET}"
+      CHATTO_AUTH_PROVIDERS_0_REQUEST_EMAIL: "true"
+      CHATTO_AUTH_PROVIDERS_0_AUTO_PROVISION: "true"
+      
+      # Enable Operator API
+      CHATTO_OPERATOR_API_ENABLED: "true"
+      CHATTO_OPERATOR_API_SOCKET_PATH: "/tmp/chatto/operator.sock"
+    networks:
+      - proxy-net
+    depends_on:
+      - nats
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1536M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # ==========================================
+  # WebApp Dashboard - Test
+  # ==========================================
+  webapp:
+    image: ghcr.io/humiditron/tb-dash-2:latest
+    container_name: humid1-webapp
+    restart: unless-stopped
+    ports:
+      - "5000"
+    environment:
+      - NODE_ENV=production
+      - DASHBOARD_URL=https://dash.humid1.com
+      - THINGSBOARD_SERVER_URL=https://app.humid1.com
+      - AUTHENTIK_URL=https://auth.humid1.com
+      - AUTHENTIK_SLUG=humid1-dash
+      - AUTHENTIK_CLIENT_ID=7nvidWHfM8C3wE3VKGqFNGFNnl9aou46mL5kporI
+      - CAPTCHA_URL=https://cap.humid1.com
+      - CHAT_URL=https://chat.humid1.com
+      - SSO_AUTH_ENDPOINT=https://app.humid1.com/oauth2/authorization/1efd3960-a10b-11f1-b530-9b9631e0c365
+      - DEFAULT_DEVICE_NAME=HUMID1-CABINET-01
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - proxy-net
+
+volumes:
+  caddy_data:
+  caddy_config:
+  postgres-data:
+    name: tb-postgres-data
+  authentik-data:
+    name: authentik-data
+  kafka-data:
+    name: tb-ce-kafka-data
+  nats-data:
+    name: nats-data
+  valkey-data:
+    name: cap-valkey-data
+    
+networks:
+  proxy-net:
+    driver: bridge

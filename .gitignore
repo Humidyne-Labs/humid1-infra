@@ -1,0 +1,6 @@
+# Ignore local environment secrets
+.env
+.env.*
+*.env
+*.old
+/temp/
