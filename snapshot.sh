@@ -81,7 +81,6 @@ done
 
 # Source credentials from .env if available
 if [ -f "$ENV_FILE" ]; then
-    # Load SFTP_* and SMTP_* variables without altering non-exported values
     set -a
     # shellcheck disable=SC1090
     source <(grep -E '^(SFTP_|SMTP_)' "$ENV_FILE" 2>/dev/null || true)
@@ -125,7 +124,7 @@ if [ "$INCLUDE_VOLUMES" = true ]; then
     mkdir -p "$TEMP_VOL_DIR"
     trap 'rm -rf "$TEMP_VOL_DIR"' EXIT INT TERM
 
-    # Current active volumes across the compose configuration
+    # Current active volumes across the BunkerWeb/HUMID1 stack
     VOLUMES=(
         "tb-postgres-data"
         "postgres-data"
@@ -140,10 +139,8 @@ if [ "$INCLUDE_VOLUMES" = true ]; then
         "cap-valkey-data"
         "valkey-data"
         "humid1_valkey-data"
-        "caddy_data"
-        "humid1_caddy_data"
-        "caddy_config"
-        "humid1_caddy_config"
+        "bw-data"
+        "humid1_bw-data"
     )
 
     ARCHIVED_COUNT=0

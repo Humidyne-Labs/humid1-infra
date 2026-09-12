@@ -3,6 +3,7 @@ set -eo pipefail
 
 # ==============================================================================
 # HUMID1_OS — Stack Cleanup & Teardown Utility
+# NEW, Untested on vps 9/12/2026
 # ==============================================================================
 
 CYAN='\033[0;36m'
@@ -21,7 +22,7 @@ Usage: $(basename "$0") [OPTIONS]
 Clean up or completely reset the HUMID1_OS Docker stack.
 
 Options:
-  -a, --authentik-only   Nuke Authentik database & volume only (preserves ThingsBoard, Chatto & Caddy)
+  -a, --authentik-only   Nuke Authentik database & volume only (preserves ThingsBoard, Chatto & BunkerWeb)
   -f, --force            Bypass interactive safety confirmation
   -h, --help             Display this help menu
 
@@ -60,7 +61,7 @@ echo -e "${CYAN}=================================================${NC}"
 
 if [ "$MODE" = "authentik" ]; then
     echo -e "${YELLOW}[!] Target: Reset Authentik Database & Cache ONLY${NC}"
-    echo -e "    ThingsBoard, Chatto, NATS, Cap, and Caddy TLS certificates will be preserved.\n"
+    echo -e "    ThingsBoard, Chatto, NATS, Cap, and BunkerWeb WAF/Certificates will be preserved.\n"
     
     if [ "$FORCE" = false ]; then
         read -rp "Are you sure you want to drop the Authentik database? [y/N]: " confirm
@@ -103,7 +104,7 @@ echo -e "  • ThingsBoard PostgreSQL database & Kafka streams"
 echo -e "  • Authentik identity database & outpost data"
 echo -e "  • Chatto messaging data & NATS JetStreams"
 echo -e "  • Captcha Valkey cache data"
-echo -e "  • Caddy SSL/TLS certificates\n"
+echo -e "  • BunkerWeb WAF databases, cache, bans, & Let's Encrypt certificates\n"
 
 if [ "$FORCE" = false ]; then
     read -rp "Type 'NUKE' to confirm complete system reset: " confirm
@@ -116,7 +117,7 @@ fi
 echo -e "\n${CYAN}[1/3] Stopping and removing containers and networks...${NC}"
 docker compose down -v --remove-orphans
 
-echo -e "${CYAN}[2/3] Purging any dangling volumes...${NC}"
+echo -e "${CYAN}[2/3] Purging persistent Docker volumes...${NC}"
 VOLUMES=(
     "tb-postgres-data" 
     "postgres-data" 
@@ -131,8 +132,8 @@ VOLUMES=(
     "cap-valkey-data"
     "valkey-data"
     "humid1_valkey-data"
-    "caddy_data" 
-    "humid1_caddy_data"
+    "bw-data"
+    "humid1_bw-data"
 )
 
 for vol in "${VOLUMES[@]}"; do
@@ -142,8 +143,9 @@ for vol in "${VOLUMES[@]}"; do
     fi
 done
 
-echo -e "${CYAN}[3/3] Pruning orphaned network interfaces...${NC}"
+echo -e "${CYAN}[3/3] Purging static proxy-net network & orphaned interfaces...${NC}"
+docker network rm proxy-net > /dev/null 2>&1 || true
 docker network prune -f > /dev/null 2>&1 || true
 
-echo -e "\n${GREEN}[+] All containers, databases, and persistent volumes purged.${NC}"
-echo -e "${CYAN}[*] Ready for a fresh launch with ./init-stack.sh${NC}\n"
+echo -e "\n${GREEN}[+] All containers, databases, networks, and persistent volumes purged.${NC}"
+echo -e "${CYAN}[*] Ready for a clean launch with ./init-stack.sh${NC}\n"

@@ -1,0 +1,33 @@
+{% extends "email/base.html" %}
+
+{% block content %}
+<p style="color: #ff3b30; font-weight: bold; margin-top: 0;">[SYSTEM_DISPATCH :: VERIFICATION_REQUEST]</p>
+
+<p>A request was received to initialize a new user node within the HUMID1 network.</p>
+
+<!-- IDENTITY METADATA TABLE -->
+<table role="presentation" width="100%" style="margin: 20px 0; border-collapse: collapse; border: 1px solid #333333; font-size: 12px; background-color: #161616;">
+    <tr style="border-bottom: 1px solid #262626;">
+        <td style="padding: 10px; color: #888888; font-weight: bold; width: 40%;">TARGET IDENTITY:</td>
+        <td style="padding: 10px; color: #ffffff;">{{ user.email }}</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #262626;">
+        <td style="padding: 10px; color: #888888; font-weight: bold;">DISPATCH TYPE:</td>
+        <td style="padding: 10px; color: #ffffff;">IDENTITY_INITIALIZATION</td>
+    </tr>
+    <tr>
+        <td style="padding: 10px; color: #888888; font-weight: bold;">SECURITY STATUS:</td>
+        <td style="padding: 10px; color: #34c759; font-weight: bold;">PENDING_ACTIVATION</td>
+    </tr>
+</table>
+
+<p>Authenticate and activate this identity record by executing the token dispatch below:</p>
+
+<p style="text-align: center; margin: 30px 0;">
+    <a href="{{ url }}" style="display: inline-block; background-color: #ffffff; color: #000000 !important; text-decoration: none; padding: 12px 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px; border: 1px solid #ffffff;">
+        INITIALIZE_IDENTITY
+    </a>
+</p>
+
+<p style="font-size: 11px; color: #777777; margin-bottom: 0;">If you did not initiate this request, terminate connection immediately and ignore this transmission.</p>
+{% endblock %}

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+</head>
+<body style="font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; background-color: #080808; color: #ffffff; margin: 0; padding: 30px 10px; -webkit-font-smoothing: antialiased;">
+    <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" style="max-width: 580px; background-color: #111111; border: 2px solid #333333; box-shadow: 6px 6px 0px #222222; padding: 24px; text-align: left;" border="0" cellspacing="0" cellpadding="0">
+                    <!-- HEADER -->
+                    <tr>
+                        <td style="border-bottom: 2px solid #333333; padding-bottom: 14px; margin-bottom: 20px;">
+                            <h1 style="margin: 0; font-size: 16px; font-weight: 800; letter-spacing: 0.05em; color: #ffffff; text-transform: uppercase;">
+                                HUMID1 :: SECURITY_NOTIFICATION
+                            </h1>
+                        </td>
+                    </tr>
+                    <!-- CONTENT -->
+                    <tr>
+                        <td style="font-size: 13px; line-height: 1.6; color: #dddddd; padding-top: 20px;">
+                            {% block content %}{% endblock %}
+                        </td>
+                    </tr>
+                    <!-- FOOTER -->
+                    <tr>
+                        <td style="border-top: 1px solid #262626; margin-top: 30px; padding-top: 16px; font-size: 10px; color: #666666; text-transform: uppercase; letter-spacing: 0.05em;">
+                            <p style="margin: 2px 0;">© 2026 HUMIDYNE LABS. ALL_RIGHTS_RESERVED.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
