@@ -147,10 +147,19 @@ if [ "$INCLUDE_VOLUMES" = true ]; then
     for vol in "${VOLUMES[@]}"; do
         if docker volume inspect "$vol" >/dev/null 2>&1; then
             echo -e "    -> Archiving volume: ${GREEN}$vol${NC}"
+
+            # Exclude ephemeral/tmp/socket files and tolerate warning exit code 1 (file changed/vanished)
             docker run --rm \
                 -v "${vol}:/volume:ro" \
                 -v "${TEMP_VOL_DIR}:/backup" \
-                alpine tar -czf "/backup/${vol}.tar.gz" -C /volume .
+                alpine sh -c "
+                    tar --exclude='*.tmp' \
+                        --exclude='*.temp' \
+                        --exclude='*.sock' \
+                        -czf '/backup/${vol}.tar.gz' -C /volume . || [ \$? -le 1 ]
+                    [ -s '/backup/${vol}.tar.gz' ]
+                "
+
             ARCHIVED_COUNT=$((ARCHIVED_COUNT + 1))
         fi
     done
