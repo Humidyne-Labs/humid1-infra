@@ -139,6 +139,7 @@ services:
     volumes:
       - authentik-data:/data
       - ./custom-templates:/templates
+      - ./media:/media
     shm_size: 512mb
     depends_on:
       postgres:
@@ -178,6 +179,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - authentik-data:/data
       - ./custom-templates:/templates
+      - ./media:/media
     shm_size: 512mb
     depends_on:
       postgres:
@@ -261,7 +263,7 @@ services:
       TB_QUEUE_TYPE: kafka
       TB_KAFKA_SERVERS: kafka:9092
       
-      # All traffic from 8883 gets forwarded to 1883 in Caddyfile
+      # All traffic from 8883 gets forwarded to 1883
       MQTT_SSL_ENABLED: "false" 
       
       SERVER_USE_FORWARD_HEADERS: "true"
