@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <!-- White Chat Bubble -->
+  <path d="M16 20H112V90H48L24 110V90H16V20Z" stroke="#ffffff" stroke-width="4"/>
+  
+  <!-- Prompt & Lines -->
+  <text x="28" y="46" font-family="'JetBrains Mono', monospace" font-size="14" font-weight="900" fill="#ff3b30">&gt;_</text>
+  <rect x="52" y="38" width="48" height="6" fill="#ffffff"/>
+  <rect x="28" y="58" width="72" height="6" fill="#ffffff" opacity="0.6"/>
+  <rect x="28" y="74" width="40" height="6" fill="#ffffff" opacity="0.6"/>
+</svg>

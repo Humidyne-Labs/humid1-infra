@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 60" fill="none">
+  <!-- Corner Brackets -->
+  <path d="M4 14V4H14M46 4H56V14M56 46V56H46M14 56H4V46" stroke="#ffffff" stroke-width="2"/>
+  
+  <!-- Telemetry Sensor Glyph -->
+  <circle cx="30" cy="30" r="16" stroke="#ffffff" stroke-width="2" stroke-dasharray="4 2"/>
+  <circle cx="30" cy="30" r="8" fill="#ffffff"/>
+  <line x1="30" y1="6" x2="30" y2="12" stroke="#ffffff" stroke-width="2"/>
+  <line x1="30" y1="48" x2="30" y2="54" stroke="#ffffff" stroke-width="2"/>
+  <line x1="6" y1="30" x2="12" y2="30" stroke="#ffffff" stroke-width="2"/>
+  <line x1="48" y1="30" x2="54" y2="30" stroke="#ffffff" stroke-width="2"/>
+
+  <!-- Text -->
+  <text x="75" y="38" font-family="'JetBrains Mono', monospace, sans-serif" font-size="24" font-weight="900" letter-spacing="-1" fill="#ffffff">
+    HUMID1<tspan fill="#ff3b30">_OS</tspan>
+  </text>
+  <text x="76" y="50" font-family="'JetBrains Mono', monospace, sans-serif" font-size="8" font-weight="700" letter-spacing="3" fill="#a0a0a0">
+    PRECISION TELEMETRY
+  </text>
+</svg>

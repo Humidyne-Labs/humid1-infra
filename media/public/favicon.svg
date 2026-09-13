@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <!-- Outer Tech Border with Cut Corners -->
+  <rect x="8" y="8" width="112" height="112" stroke="currentColor" stroke-width="6"/>
+  <rect x="2" y="2" width="16" height="16" fill="currentColor"/>
+  <rect x="110" y="2" width="16" height="16" fill="currentColor"/>
+  <rect x="2" y="110" width="16" height="16" fill="currentColor"/>
+  <rect x="110" y="110" width="16" height="16" fill="currentColor"/>
+
+  <!-- "H1" Monogram -->
+  <!-- Letter H -->
+  <rect x="32" y="36" width="12" height="56" fill="currentColor"/>
+  <rect x="60" y="36" width="12" height="56" fill="currentColor"/>
+  <rect x="32" y="58" width="40" height="12" fill="currentColor"/>
+  
+  <!-- Number 1 -->
+  <rect x="84" y="36" width="12" height="56" fill="#ba1a1a"/>
+  <polygon points="76,48 84,36 84,48" fill="#ba1a1a"/>
+</svg>
