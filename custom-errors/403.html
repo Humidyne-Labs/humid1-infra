@@ -1075,9 +1075,10 @@ body {
     const initialCigarWidth = 410; // total unburned length
     const bandOffset = 45; // position from left cap
     const bandWidth = 46;
+	const burnPadding = 25;
 
     // Fixed burn settings
-    const burnableLength = initialCigarWidth - (bandOffset + bandWidth); // 410 - 111 = 299
+    const burnableLength = initialCigarWidth - (bandOffset + bandWidth + burnPadding); // 410 - 111 = 299
     const MAX_BURN_FRACTION = (burnableLength - 2) / initialCigarWidth; // stop right at edge of the gold band
     const cycleDuration = 22000; // 22 seconds for deep contemplative burn cycle
     let startTime = performance.now();
