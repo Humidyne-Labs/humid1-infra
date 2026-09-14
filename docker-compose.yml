@@ -15,9 +15,18 @@ services:
       - ./bunkerweb.env
     volumes:
       - bw-data:/data
+      - ./custom-errors:/var/www/html/custom_errors:ro
     networks:
       proxy-net:
         ipv4_address: 172.19.0.100
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1536M      # 1.5GB gives safety room for 50M-100M payload inspection
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
   bunkerweb-scheduler:
     image: bunkerity/bunkerweb-scheduler:1.6.14
@@ -29,9 +38,18 @@ services:
       - ./bunkerweb.env
     volumes:
       - bw-data:/data
+      - ./custom-errors:/var/www/html/custom_errors:ro
     networks:
       proxy-net:
         ipv4_address: 172.19.0.101
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 384M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
       
   # ==========================================
   # BunkerWeb Admin Dashboard
@@ -49,7 +67,15 @@ services:
     volumes:
       - bw-data:/data
     networks:
-      - proxy-net      
+      - proxy-net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
           
   # ==========================================
   # Captcha Service
