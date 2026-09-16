@@ -2,5 +2,5 @@
 .env
 .env.*
 *.env
-*.bat
+copy-infra.bat
 vps_internal_audit.sh
