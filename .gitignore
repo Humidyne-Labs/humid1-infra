@@ -2,5 +2,5 @@
 .env
 .env.*
 *.env
-*.old
-/temp/
+*.bat
+vps_internal_audit.sh

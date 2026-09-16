@@ -406,6 +406,7 @@ services:
       - DEFAULT_DEVICE_NAME="${VITE_DEFAULT_DEVICE_NAME}"
       - DASHBOARD_VERSION="${VITE_DASHBOARD_VERSION}"
       - DASHBOARD_REVISION="${VITE_DASHBOARD_REVISION}"
+      - PUSH_MICROSERVICE_URL="${VITE_PUSH_MICROSERVICE_URL}"
     networks:
       - proxy-net
       
@@ -418,6 +419,25 @@ services:
     restart: unless-stopped
     networks:
       - proxy-net   
+
+  # ==========================================
+  # WebPush Alerts Relay Service for Googles FCM API
+  # ==========================================
+  webpush-relay:
+    image: ghcr.io/humidyne-labs/micro-service:latest
+    container_name: humid1-webpush-relay
+    restart: unless-stopped
+    env_file:
+      - ./userv.env    
+    ports:
+      - "127.0.0.1:2000:2000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:2000/healthz\")' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - proxy-net         
 
 volumes:
   bw-data:
